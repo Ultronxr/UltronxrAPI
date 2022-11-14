@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>authTest</title>
+</head>
+<body>
+    <button onclick="clickTest()">测试</button>
+    <button onclick="sendRequest()">请求接口</button>
+
+    <script src="./../js/jquery/jquery-3.6.0.min.js"></script>
+    <script src="../js/algorithm/md5.min.js"></script>
+    <script src="../js/algorithm/sha256.min.js"></script>
+    <script src="../js/algorithm/base64.min.js"></script>
+</body>
+<script>
+    var testAPIUrl = "http://127.0.0.1:8094",
+        testAPIQuery = "/api/sms/easySendSMSofObjectMonitor";
+    var sha256Key = "key", sha256Secret = "secret";
+
+    function clickTest() {
+        generateSign();
+    }
+
+    function generateSign() {
+        let httpMethod = "POST",
+            content = JSON.stringify({"phoneNumber":"","templateParamSet":["P2000久经","0.55","0.54","/goods/33835"]}),
+            contentMD5 = md5(content),
+            timestamp = new Date().getTime(),
+            nonce = (getRandom(100, timestamp) - getRandom(100, timestamp)).toString(),
+            pathAndParameters = testAPIUrl + testAPIQuery;
+
+        let stringToSign = httpMethod + "\n" +
+                            contentMD5 + "\n" +
+                            timestamp + "\n" +
+                            nonce + "\n" +
+                            pathAndParameters + "\n";
+        console.log(stringToSign);
+        let sign = base64.encode(sha256.hmac(sha256Secret, stringToSign));
+        console.log(sign);
+        return sign;
+    }
+
+    function getRandom(min, max) {
+        parseInt(Math.random() * (max-min+1) + min, 10);
+        return Math.floor(Math.random() * (max-min+1) + min);
+    }
+
+    function sendRequest() {
+        let sign = generateSign();
+
+        $.ajax({
+            url: "http://127.0.0.1:8094/api/sms/easySendSMSofObjectMonitor",
+            method: 'POST',
+            headers: {
+                "x-ca-key": sha256Key,
+                "x-ca-signature-algorithm": "HmacSHA256",
+                "x-ca-signature": sign,
+                "content-type": "application/json;charset=utf-8"
+            },
+            "data": JSON.stringify({"phoneNumber":"","templateParamSet":["P2000久经","0.55","0.54","/goods/33835"]}),
+            success:(res) => {
+                console.log(res);
+            }
+        })
+
+    }
+
+
+
+    /*
+md5('Message to hash');
+var hash = md5.create();
+hash.update('Message to hash');
+hash.hex();
+========================================================
+sha256('Message to hash');
+sha224('Message to hash');
+
+var hash = sha256.create();
+hash.update('Message to hash');
+hash.hex();
+
+var hash2 = sha256.update('Message to hash');
+hash2.update('Message2 to hash');
+hash2.array();
+
+// HMAC
+sha256.hmac('key', 'Message to hash');
+sha224.hmac('key', 'Message to hash');
+
+var hash = sha256.hmac.create('key');
+hash.update('Message to hash');
+hash.hex();
+
+var hash2 = sha256.hmac.update('key', 'Message to hash');
+hash2.update('Message2 to hash');
+hash2.array();
+================================================================
+base64.encode('String to encode');
+base64.decode('Base64 string to decode');
+     */
+</script>
+</html>
