@@ -50,7 +50,7 @@ ali.oss.folderKey=
 + `resources/auth.properties`
 
 ```properties
-# 自建API认证密钥（功能等同于阿里云的 APP Key 和 APP Secret）
+# 自建API认证密钥（功能等同于阿里云的 APP KeyPair 和 APP Secret）
 key=
 secret=
 ```

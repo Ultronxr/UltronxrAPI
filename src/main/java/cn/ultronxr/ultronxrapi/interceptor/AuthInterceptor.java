@@ -1,8 +1,11 @@
 package cn.ultronxr.ultronxrapi.interceptor;
 
+import cn.ultronxr.ultronxrapi.auth.bean.EncryptionAlgorithm;
+import cn.ultronxr.ultronxrapi.auth.bean.KeyPair;
+import cn.ultronxr.ultronxrapi.auth.bean.Signature;
 import cn.ultronxr.ultronxrapi.bean.Response;
 import cn.ultronxr.ultronxrapi.bean.ResponseCode;
-import cn.ultronxr.ultronxrapi.service.AuthService;
+import cn.ultronxr.ultronxrapi.auth.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author Ultronxr
@@ -32,26 +36,30 @@ public class AuthInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        String key =  request.getHeader("x-ca-key"),
+        String key = request.getHeader("x-ca-key"),
                 signatureAlgorithm = request.getHeader("x-ca-signature-algorithm"),
-                signature = request.getHeader("x-ca-signature");
+                clientSignature = request.getHeader("x-ca-signature");
 
-        if(StringUtils.isEmpty(signature)) {
+        if(StringUtils.isEmpty(clientSignature)) {
             return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "请求签名为空。"));
         }
-        if(authService.whetherToSupportTheEncryptionAlgorithm(signatureAlgorithm)) {
-            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "不支持这种签名加密算法。"));
+        if(!EncryptionAlgorithm.support(signatureAlgorithm)) {
+            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "不支持的签名加密算法。"));
         }
-        String secret = authService.getSecret(key);
-        String stringToSign = authService.generateStringToSign(request);
-        String sign = authService.generateSign(secret, stringToSign);
-        // 左边为真则直接返回true，左边为假则返回右边
-        return sign.equals(signature) || doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "签名校验失败。"));
+        KeyPair keyPair = authService.getKeyPair(key);
+        if(!keyPair.isLegal()) {
+            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "未授权的Key。"));
+        }
+        Signature serverSignature = new Signature(keyPair, request);
+        if(!serverSignature.isLegal()) {
+            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "签名校验失败。"));
+        }
+        return serverSignature.getSignature().equals(clientSignature);
     }
 
     private boolean doResponse(HttpServletResponse hsResponse, Response response) throws Exception {
-        hsResponse.setContentType("application/json;charset=UTF-8");
-        hsResponse.setContentLength(response.toString().length());
+        hsResponse.setContentType("application/json;charset=utf-8");
+        hsResponse.setContentLength(response.toString().getBytes(StandardCharsets.UTF_8).length);
         hsResponse.getWriter().write(response.toString());
         hsResponse.getWriter().flush();
         hsResponse.getWriter().close();
