@@ -1,11 +1,8 @@
 package cn.ultronxr.ultronxrapi.interceptor;
 
-import cn.ultronxr.ultronxrapi.auth.bean.EncryptionAlgorithm;
-import cn.ultronxr.ultronxrapi.auth.bean.KeyPair;
-import cn.ultronxr.ultronxrapi.auth.bean.Signature;
 import cn.ultronxr.ultronxrapi.bean.Response;
-import cn.ultronxr.ultronxrapi.bean.ResponseCode;
 import cn.ultronxr.ultronxrapi.auth.service.AuthService;
+import cn.ultronxr.ultronxrapi.bean.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,25 +33,11 @@ public class AuthInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        String key = request.getHeader("x-ca-key"),
-                signatureAlgorithm = request.getHeader("x-ca-signature-algorithm"),
-                clientSignature = request.getHeader("x-ca-signature");
-
-        if(StringUtils.isEmpty(clientSignature)) {
-            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "请求签名为空。"));
+        String checkResult = authService.checkSignature(request);
+        if(StringUtils.isNotEmpty(checkResult)) {
+            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, checkResult));
         }
-        if(!EncryptionAlgorithm.support(signatureAlgorithm)) {
-            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "不支持的签名加密算法。"));
-        }
-        KeyPair keyPair = authService.getKeyPair(key);
-        if(!keyPair.isLegal()) {
-            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "未授权的Key。"));
-        }
-        Signature serverSignature = new Signature(keyPair, request);
-        if(!serverSignature.isLegal()) {
-            return doResponse(response, new Response(ResponseCode.UNAUTHORIZED, "签名校验失败。"));
-        }
-        return serverSignature.getSignature().equals(clientSignature);
+        return true;
     }
 
     private boolean doResponse(HttpServletResponse hsResponse, Response response) throws Exception {

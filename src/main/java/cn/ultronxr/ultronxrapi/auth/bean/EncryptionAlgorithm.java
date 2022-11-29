@@ -5,8 +5,7 @@ import java.util.Arrays;
 /**
  * @author Ultronxr
  * @date 2022/11/16 00:33
- *
- * 摘要签名认证服务支持的加密算法
+ * @description 摘要签名认证服务支持的加密算法
  */
 public enum EncryptionAlgorithm {
 
@@ -29,13 +28,17 @@ public enum EncryptionAlgorithm {
     }
 
     /**
-     * 签名认证服务是否支持某种加密算法（检查此枚举中是否存在某种加密算法）
+     * 签名认证服务是否支持某种加密算法（检查此枚举中是否存在某种加密算法）<br/>
+     * 如果支持，会返回对应名称的枚举；否则返回 null
      *
      * @param algorithm 待检查的加密算法
-     * @return true - 支持; false - 不支持
+     * @return 支持 - 返回对应名称的 {@code EncryptionAlgorithm} 枚举；不支持 - 返回 null
      */
-    public static boolean support(String algorithm) {
-        return Arrays.stream(EncryptionAlgorithm.values()).anyMatch(al -> al.getAlgorithm().equals(algorithm));
+    public static EncryptionAlgorithm support(String algorithm) {
+        return Arrays.stream(EncryptionAlgorithm.values())
+                .filter(al -> al.getAlgorithm().equals(algorithm))
+                .findFirst()
+                .orElse(null);
     }
 
 }
